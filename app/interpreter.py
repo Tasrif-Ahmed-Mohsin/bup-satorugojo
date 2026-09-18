@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 from time import perf_counter
+from typing import Callable
 
 import httpx
 
@@ -81,7 +82,25 @@ class InterpreterError(ValueError):
         super().__init__(self.message)
 
 
-def build_prompt(scenario: ScenarioRequest) -> str:
+# Static reasons only: a correction never quotes the rejected reply or a note.
+_REPAIRS = {
+    "invalid_directives": "an entry did not match the required types or exact shapes",
+    "note_count_mismatch": "the number of entries did not match the number of notes",
+    "reserve_exceeds_capacity": "a reserve was larger than the battery capacity",
+}
+
+
+def _correction(code: str, count: int) -> str:
+    return (
+        f"Your previous reply was rejected by validation because {_REPAIRS[code]}. "
+        f"Reply again with exactly {count} entries, note_index 0 to {count - 1} in order, "
+        "each using the exact structured_adjustment shape for its directive_type, hours as "
+        "unique ascending integers from 0 to 23, factor between 0 and 1, and any reserve no "
+        "larger than the battery capacity."
+    )
+
+
+def build_prompt(scenario: ScenarioRequest, correction: str | None = None) -> str:
     """Notes are inserted as clearly delimited data, never as instructions."""
     listed = "\n".join(
         f"[{index}] {note.strip()}" for index, note in enumerate(scenario.operator_notes)
@@ -95,6 +114,7 @@ def build_prompt(scenario: ScenarioRequest) -> str:
         f"<notes>\n{listed}\n</notes>\n\n"
         "Reply with a JSON object in exactly this form, with one entry per note:\n"
         f"{_EXAMPLE}"
+        + (f"\n\n{correction}" if correction else "")
     )
 
 
@@ -155,37 +175,63 @@ async def interpret_notes(
     scenario: ScenarioRequest,
     *,
     budget_seconds: float | None = None,
+    validate: Callable[[dict], object] | None = None,
 ) -> dict:
-    """Return the raw envelope from the model; validation happens downstream.
+    """Return the envelope from the model; the caller still validates it.
 
-    Retries only transient failures and unusable output, at most
-    ``settings.max_attempts`` times, and never past the remaining budget.
+    Retries transient failures and unusable output at most
+    ``settings.max_attempts`` times and never past the remaining budget. When
+    ``validate`` is given and rejects a reply for a repairable reason, the next
+    attempt carries a static correction. A reply that is still rejected is
+    returned unchanged, so downstream validation reports the real failure: a
+    note is never dropped, padded or relaxed to force a pass.
     """
     if not settings.configured:
         raise InterpreterError("not_configured")
-    prompt = build_prompt(scenario)
     started = perf_counter()
     budget = settings.model_phase_seconds if budget_seconds is None else budget_seconds
     last = InterpreterError("provider_unavailable")
+    correction: str | None = None
+    rejected: dict | None = None
     for attempt in range(settings.max_attempts):
         remaining = budget - (perf_counter() - started)
         if remaining <= 0.5:
+            if rejected is not None:
+                return rejected
             # Report what actually went wrong if an attempt already failed.
             if attempt:
                 raise last
             raise InterpreterError("provider_timeout")
         try:
-            return await _request_once(
-                client, settings, prompt, min(settings.model_attempt_seconds, remaining)
+            envelope = await _request_once(
+                client,
+                settings,
+                build_prompt(scenario, correction),
+                min(settings.model_attempt_seconds, remaining),
             )
         except InterpreterError as error:
             if error.code in ("not_configured", "provider_unavailable"):
                 raise
             last = error
+            continue
         except (httpx.TimeoutException, asyncio.TimeoutError):
             last = InterpreterError("provider_timeout")
-        except httpx.HTTPStatusError:
-            last = InterpreterError("provider_unavailable")
+            continue
         except httpx.HTTPError:
             last = InterpreterError("provider_unavailable")
+            continue
+        if validate is None:
+            return envelope
+        try:
+            validate(envelope)
+        except ValueError as error:
+            code = getattr(error, "code", None)
+            if code not in _REPAIRS:
+                return envelope
+            rejected = envelope
+            correction = _correction(code, len(scenario.operator_notes))
+            continue
+        return envelope
+    if rejected is not None:
+        return rejected
     raise last

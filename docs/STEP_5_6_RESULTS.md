@@ -88,6 +88,12 @@ was verified directly against the registry with no credentials: the manifest ret
 the digest matches the running container's image. Version 1.0.0 was the first published build,
 before the demo page and startup warm-up were added.
 
+Version 1.2.0, digest `sha256:a07fc976732101a598930362cada35ba59ae34a7067fd4f54051ab935f3136f1`,
+now serves the endpoint. It adds one guarded retry: a model reply that fails the deterministic
+guardrails is sent back once with a static correction. On 1.2.0 the ten public cases stayed 10/10
+valid with exact costs, p95 1.47 s, and the 23 scorable notes of an independent paraphrase set
+stayed 23/23.
+
 ## Demo page and cold start
 
 A `GET /` page was added so the pipeline can be shown to a person rather than read as JSON. It is a

@@ -121,6 +121,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 settings,
                 scenario,
                 budget_seconds=min(settings.model_phase_seconds, remaining),
+                validate=lambda candidate: validate_directives(scenario, candidate),
             )
         except InterpreterError as error:
             return _error(500, error.code, error.message)

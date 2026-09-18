@@ -72,8 +72,8 @@ No login, VPN or manual step is needed to reach it. The container uses `--restar
 The image contains no credential; the key is supplied at run time.
 
 ```bash
-docker build -t gridwise:1.1.0 .
-docker run -d --name gridwise --restart unless-stopped -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here gridwise:1.1.0
+docker build -t gridwise:1.2.0 .
+docker run -d --name gridwise --restart unless-stopped -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here gridwise:1.2.0
 curl -i http://localhost/health
 ```
 
@@ -85,22 +85,22 @@ The image is public on Docker Hub and requires no login to pull:
 
 | | |
 |---|---|
-| Tag | `tasrifahmed/gridwise:1.1.0` (also `:latest`) |
-| Digest | `sha256:e71f2661443313c97e6b341c72e94ec0ff0fad42e217b47ad3d1bdb00cb0cd1f` |
+| Tag | `tasrifahmed/gridwise:1.2.0` (also `:latest`) |
+| Digest | `sha256:a07fc976732101a598930362cada35ba59ae34a7067fd4f54051ab935f3136f1` |
 
 ```bash
-docker pull tasrifahmed/gridwise:1.1.0
-docker run -d --name gridwise -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here tasrifahmed/gridwise:1.1.0
+docker pull tasrifahmed/gridwise:1.2.0
+docker run -d --name gridwise -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here tasrifahmed/gridwise:1.2.0
 curl -i http://localhost/health
 ```
 
 To pin the exact build, pull by digest:
 
 ```bash
-docker pull tasrifahmed/gridwise@sha256:e71f2661443313c97e6b341c72e94ec0ff0fad42e217b47ad3d1bdb00cb0cd1f
+docker pull tasrifahmed/gridwise@sha256:a07fc976732101a598930362cada35ba59ae34a7067fd4f54051ab935f3136f1
 ```
 
-Anonymous pull access was verified against the registry with no credentials: the manifest for `1.1.0` returns HTTP 200 and the digest above. This is the same image currently serving the public endpoint.
+Anonymous pull access was verified against the registry with no credentials: the manifest for `1.2.0` returns HTTP 200 and the digest above. This is the same image currently serving the public endpoint.
 
 ## Verification
 
@@ -124,7 +124,7 @@ One further script does make real, paid provider calls and is therefore never pa
 
 | Check | Result |
 |---|---|
-| `pytest -q` | **257 passed**, 2.5 s |
+| `pytest -q` | **261 passed**, 3.4 s |
 | Reference replay (`check_samples`) | **10/10** references valid, 18 notes, 240 hours |
 | LP cost comparison (`solve_samples`) | **10/10** public costs reproduced exactly (difference `0.0`), ~4 ms per solve |
 | Real-model interpretation (`measure_interpretation`) | **18/18** public notes and **20/20** independent paraphrases correct; interpretation p95 1.20 s |
@@ -160,13 +160,33 @@ Nineteen deliberately awkward requests were sent to the deployed service on 18 S
 
 One result depends on a rule the source leaves open: "No discharging from 10 PM to 2 AM" returned hours `[0, 1, 22, 23]`, treating the window as wrapping past midnight within the same 24-hour day. The published rules do not define cross-midnight windows, so this is reported as observed behaviour, not as a confirmed answer.
 
+### Paraphrase stress test
+
+Twenty-five notes written independently to probe hard wording were run one at a time through the live pipeline. Each returned a replay-checked plan, so every directive was applied as well as read. **23 of the 23 scorable notes were correct on version 1.1.0, and again on 1.2.0.**
+
+| Wording | Result |
+|---|---|
+| "cut **by** 80%", "only 20% should remain", "one-fifth capacity" | factor 0.2 every time |
+| "reduced **to** 30%, **not by** 30%", "**loses** 70%" | factor 0.3 both times |
+| "You may charge… but stored energy must not be used from 6–8 PM" | only `no_discharge_window [18, 19]`; the permission is not turned into a rule |
+| "at 8 AM **and** 9 AM" | `[8, 9]` |
+| "from 10 PM **until midnight**" | `[22, 23]` |
+| "Battery maintenance is scheduled tomorrow, although today's charging and discharging operations are unchanged" | `no_op` |
+| A reserve plus unrelated cafeteria context in one note | the reserve only |
+
+Two further notes were not scored. One packed two separate rules into a single note; the contract allows exactly one directive per note, so one rule is necessarily lost, while the same two rules as two notes were both extracted correctly. The other, "reduced by 25% between 23:00 and 01:00", returned factor 0.75 with hours `[0, 23]`; the factor is right, and the hours depend on the cross-midnight rule the source leaves open.
+
+### Repairing a rejected reply
+
+Version 1.2.0 adds one safeguard. Before it, a model reply that parsed as JSON but failed the deterministic guardrails — the wrong number of entries, a wrong shape, a reserve above capacity — ended the request with a `500`. Now that reply is sent back once with a fixed correction naming what was wrong, inside the same time budget. The correction never quotes the rejected reply or any note. A reply that is still invalid is returned unchanged so the guardrails report the real failure: nothing is padded, dropped or relaxed to force a pass. Replies that pass validation first time never take this path, so it cannot change any correct interpretation.
+
 ## Modules
 
 | Module | Responsibility |
 |---|---|
 | `app/main.py` | Two exact routes, readiness, request deadline, sanitized error handling |
 | `app/config.py` | Environment settings and deadline budgets; credential values never logged |
-| `app/interpreter.py` | DeepSeek request, strict JSON parsing, bounded retries; notes passed as delimited data |
+| `app/interpreter.py` | DeepSeek request, strict JSON parsing, bounded retries; notes passed as delimited data; a reply rejected by the guardrails gets one retry carrying a static correction |
 | `app/schemas.py` | Required fields, strict finite numbers, 24-hour coverage, battery consistency, directive shapes, response ordering |
 | `app/directives.py` | One interpretation per note, reserve guardrails, safe hour sorting, hourly operating bounds |
 | `app/optimizer.py` | Signed-flow continuous LP over 96 variables, exact schedule reconstruction, grounded summary |

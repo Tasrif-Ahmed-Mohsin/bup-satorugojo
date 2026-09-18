@@ -237,3 +237,83 @@ def test_settings_never_expose_the_key_through_repr_of_the_app_config():
     assert isinstance(settings.configured, bool)
     assert settings.model
     assert settings.request_deadline_seconds <= 30
+
+
+TWO_NOTES = ("Solar drops to 20% from 1 PM to 3 PM.", "Do not charge at 2 PM.")
+VALID_TWO = json.dumps(
+    {
+        "directive_interpretation": [
+            {
+                "note_index": 0,
+                "applies": True,
+                "directive_type": "solar_reduction",
+                "structured_adjustment": {"hours": [13, 14], "factor": 0.2},
+                "explanation": "Usable solar falls to a fifth for those hours.",
+            },
+            {
+                "note_index": 1,
+                "applies": True,
+                "directive_type": "no_charge_window",
+                "structured_adjustment": {"hours": [14]},
+                "explanation": "Charging is not allowed at 2 PM.",
+            },
+        ]
+    }
+)
+
+
+def _validator(scenario):
+    return lambda envelope: validate_directives(scenario, envelope)
+
+
+@pytest.mark.anyio
+async def test_a_reply_rejected_by_the_guardrails_is_repaired_once():
+    """One entry for two notes fails validation; the corrected retry succeeds."""
+    handler = _responder(
+        httpx.Response(200, json=_completion(VALID_CONTENT)),
+        httpx.Response(200, json=_completion(VALID_TWO)),
+    )
+    scenario = _scenario(TWO_NOTES)
+    async with _client(handler) as client:
+        envelope = await interpret_notes(client, SETTINGS, scenario, validate=_validator(scenario))
+    assert len(handler.calls) == 2
+    assert len(validate_directives(scenario, envelope)) == 2
+    first, second = (call["messages"][1]["content"] for call in handler.calls)
+    assert "rejected by validation" not in first
+    assert "rejected by validation" in second and "exactly 2 entries" in second
+
+
+@pytest.mark.anyio
+async def test_a_valid_reply_is_never_retried():
+    handler = _responder(httpx.Response(200, json=_completion(VALID_CONTENT)))
+    scenario = _scenario()
+    async with _client(handler) as client:
+        await interpret_notes(client, SETTINGS, scenario, validate=_validator(scenario))
+    assert len(handler.calls) == 1
+
+
+@pytest.mark.anyio
+async def test_a_reply_that_stays_invalid_still_fails_downstream():
+    """The retry never pads or drops a note to force validation to pass."""
+    handler = _responder(httpx.Response(200, json=_completion(VALID_CONTENT)))
+    scenario = _scenario(TWO_NOTES)
+    async with _client(handler) as client:
+        envelope = await interpret_notes(client, SETTINGS, scenario, validate=_validator(scenario))
+    assert len(handler.calls) == SETTINGS.max_attempts
+    with pytest.raises(DirectiveValidationError) as error:
+        validate_directives(scenario, envelope)
+    assert error.value.code == "note_count_mismatch"
+
+
+@pytest.mark.anyio
+async def test_the_correction_never_quotes_note_text():
+    marker = "ZZ-NOTE-MARKER"
+    handler = _responder(
+        httpx.Response(200, json=_completion(VALID_CONTENT)),
+        httpx.Response(200, json=_completion(VALID_TWO)),
+    )
+    scenario = _scenario((f"Solar drops to 20% from 1 PM to 3 PM. {marker}", TWO_NOTES[1]))
+    async with _client(handler) as client:
+        await interpret_notes(client, SETTINGS, scenario, validate=_validator(scenario))
+    after_notes = handler.calls[1]["messages"][1]["content"].split("</notes>", 1)[1]
+    assert marker not in after_notes
