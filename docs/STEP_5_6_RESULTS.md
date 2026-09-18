@@ -127,6 +127,24 @@ public samples returned 10/10 valid with exact costs, p95 1.44 s sequential, and
 concurrency 5 and 10. `scripts/check_endpoint.py` was added as the documented public-sample test
 procedure, and `examples/sample_response.json` holds a real response from the deployed service.
 
+## Version 1.4.0: a grid-versus-charging confusion
+
+Extending `scripts/measure_interpretation.py` to all four note sets (18 public, 20, 23 and 24
+independent) and re-running it exposed a nondeterministic miss: "Take nothing from the grid during
+the 4 AM hour" came back once as `no_charge_window` instead of `max_grid_window` with 0 kWh, although
+it had passed on an earlier run. The prompt now states the distinction the problem statement draws
+between the two types: a limit on electricity drawn from the grid is `max_grid_window`, "no grid
+power" or "the grid is unavailable" is a cap of 0, and `no_charge_window` applies only when the
+battery must not be charged. Three separate full runs after the change each scored 85/85. On the
+live service, "Take nothing from the grid" and "The grid is unavailable from 1 AM to 3 AM" returned
+`max_grid_window` with 0 kWh, while "Do not charge the battery at 4 AM" still returned
+`no_charge_window`. The same release corrects the summary's singular and plural wording.
+
+Version 1.4.0, digest `sha256:4e19c008d53d896855684f624b984f84fad684e41067953fd4ce413b9e7bdca8`,
+serves the endpoint. It was verified keyless (`/health` 200, `/optimize-energy` `not_configured`)
+and with the key (public samples 10/10 valid with exact costs). p95 was 1.52 s sequential and 1.52
+and 1.54 s at concurrency 5 and 10, with 60/60 valid.
+
 ## Submission
 
 The endpoint, repository, image reference and video were submitted through the organizer's form

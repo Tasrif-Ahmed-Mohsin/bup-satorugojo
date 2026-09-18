@@ -277,6 +277,10 @@ def warm_up() -> bool:
     return True
 
 
+def _count(number: int, noun: str) -> str:
+    return f"{number} {noun}" if number == 1 else f"{number} {noun}s"
+
+
 def _format(value: float) -> str:
     text = f"{value:.2f}"
     return text.rstrip("0").rstrip(".") if "." in text else text
@@ -296,11 +300,12 @@ def build_summary(
     if active:
         kinds = sorted({item.directive_type.replace("_", " ") for item in active})
         parts.append(
-            f"Applies {len(active)} of {len(directives)} operator notes "
+            f"Applies {len(active)} of {_count(len(directives), 'operator note')} "
             f"as scheduling constraints ({', '.join(kinds)})."
         )
     else:
-        parts.append(f"No operator note changes the schedule; {len(directives)} were reviewed.")
+        reviewed = "1 was" if len(directives) == 1 else f"{len(directives)} were"
+        parts.append(f"No operator note changes the schedule; {reviewed} reviewed.")
     parts.append(
         f"Imports {_format(total_grid)} kWh from the grid for "
         f"{_format(total_cost)} BDT, peaking at {_format(peak_grid)} kWh in one hour."
@@ -309,7 +314,8 @@ def build_summary(
     discharging = sum(1 for delta in schedule.battery_delta_kwh if delta < 0)
     if charging or discharging:
         parts.append(
-            f"Charges in {charging} hours and discharges in {discharging} hours, "
+            f"Charges in {_count(charging, 'hour')} and discharges in "
+            f"{_count(discharging, 'hour')}, "
             f"ending at the initial {_format(scenario.battery.initial_energy_kwh)} kWh."
         )
     else:

@@ -63,7 +63,12 @@ Rules:
    schedule, such as announcements, menus, deadlines, staffing, or an event on
    a different day. Distractor notes are expected.
 8. Never invent a directive type, an hour, or a number the note does not state.
-9. Keep each "explanation" to one short factual sentence."""
+9. Keep each "explanation" to one short factual sentence.
+10. A limit on electricity drawn, imported, bought or taken from the grid is
+   "max_grid_window". "No grid power", "take nothing from the grid" or "the grid
+   is unavailable" means max_grid_kwh 0. Use "no_charge_window" only when the
+   battery must not be charged, and "no_discharge_window" only when the battery
+   must not be discharged or used."""
 
 _EXAMPLE = (
     '{"directive_interpretation": [{"note_index": 0, "applies": true, '
