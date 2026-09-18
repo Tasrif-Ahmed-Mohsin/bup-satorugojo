@@ -72,17 +72,27 @@ static and carry no scenario text, input value, stack trace or credential.
   test and does not predict behaviour under the judges' actual traffic.
 - Accuracy is 38/38 on the public notes and this project's own paraphrases. Hidden cases may use
   wording neither set covers; no claim is made about them.
-- The Docker image is built and running on the VM but **not yet published to a registry**, so the
-  pullable fallback with an exact tag and digest is still outstanding.
-- The repository has **not been pushed**; GitHub CLI is not authenticated and SSH to GitHub returns
-  `Permission denied (publickey)`. Repository visibility has not been set or changed.
 - **No submission video exists.**
 - Cross-midnight and equal-start-end time windows remain unresolved in the supplied rules and are
   not claimed as answered. Different overlapping solar factors still fail explicitly.
 
+## Repository and image
+
+The source was pushed to `git@github.com:Tasrif-Ahmed-Mohsin/bup-satorugojo.git` on branch `main`.
+The remote held no prior history, so nothing was overwritten and no force push was used. An
+anonymous GitHub API request returns 404, confirming the repository is private as the rules require
+during the event; it must be made public after the deadline.
+
+The image is published as `tasrifahmed/gridwise:1.0.0` and `:latest`, digest
+`sha256:51247f632d9ce30863d7d47b61bc0e4dd2ba2057ce9f6014ed3aaa3330a25b80`. Anonymous pull access
+was verified directly against the registry with no credentials: the manifest returns HTTP 200 and
+the digest matches the running container's image.
+
+The Docker Hub access token used for this push was pasted into the assistant chat by the user and
+was set never to expire. It should be revoked after the event, along with the DeepSeek key.
+
 ## Remaining work
 
-1. Authenticate GitHub, push to the private repository, and confirm visibility handling.
-2. Publish the Docker image and record the exact tag and digest in the README.
-3. Record and host the video, no longer than three minutes.
-4. Submit the endpoint, repository, image reference and video links.
+1. Record and host the video, no longer than three minutes.
+2. Submit the endpoint, repository, image reference and video links.
+3. After the deadline: make the repository public, and revoke the DeepSeek key and Docker Hub token.

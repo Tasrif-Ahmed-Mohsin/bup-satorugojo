@@ -75,7 +75,30 @@ docker run -d --name gridwise --restart unless-stopped -p 80:8000 -e DEEPSEEK_AP
 curl -i http://localhost/health
 ```
 
-The container listens on `0.0.0.0:8000`, runs as an unprivileged user, and carries a `HEALTHCHECK` that polls `/health`. It was built and is running on the deployment VM. A published registry tag and digest are added below once the image is pushed.
+The container listens on `0.0.0.0:8000`, runs as an unprivileged user, and carries a `HEALTHCHECK` that polls `/health`.
+
+### Published image
+
+The image is public on Docker Hub and requires no login to pull:
+
+| | |
+|---|---|
+| Tag | `tasrifahmed/gridwise:1.0.0` (also `:latest`) |
+| Digest | `sha256:51247f632d9ce30863d7d47b61bc0e4dd2ba2057ce9f6014ed3aaa3330a25b80` |
+
+```bash
+docker pull tasrifahmed/gridwise:1.0.0
+docker run -d --name gridwise -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here tasrifahmed/gridwise:1.0.0
+curl -i http://localhost/health
+```
+
+To pin the exact build, pull by digest:
+
+```bash
+docker pull tasrifahmed/gridwise@sha256:51247f632d9ce30863d7d47b61bc0e4dd2ba2057ce9f6014ed3aaa3330a25b80
+```
+
+Anonymous pull access was verified against the registry with no credentials: the manifest for `1.0.0` returns HTTP 200 and the digest above. This is the same image currently serving the public endpoint.
 
 ## Verification
 
@@ -159,7 +182,7 @@ Input metadata outside the required fields is ignored. Numeric strings, booleans
 
 Implemented and measured: contracts, guardrails, real interpretation, the optimizer, independent replay, the wired API, and the Dockerfile.
 
-Outstanding: the Docker image is built and running on the VM but not yet published to a registry; no submission video exists; and the repository has not been pushed. Cross-midnight and equal-start-end time windows remain unresolved in the supplied rules and are not claimed as answered.
+Outstanding: the submission video. Cross-midnight and equal-start-end time windows remain unresolved in the supplied rules and are not claimed as answered.
 
 ## Credits and sources
 
