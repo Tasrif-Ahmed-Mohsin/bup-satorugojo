@@ -19,3 +19,9 @@ def public_cases():
 @pytest.fixture
 def first_case(public_cases):
     return copy.deepcopy(public_cases[0])
+
+
+@pytest.fixture
+def anyio_backend():
+    """Run async provider-boundary tests on asyncio only."""
+    return "asyncio"

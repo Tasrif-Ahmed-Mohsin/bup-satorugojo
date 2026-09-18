@@ -7,9 +7,9 @@ If resuming after that date/time, confirm the current event situation before rel
 
 ## Current position
 
-**Steps 1 and 2 are complete. Step 3 is complete locally. Step 4 has not started and was awaiting approval.** This handoff request does not itself approve another implementation step. The resume prompt at the end explicitly approves Step 4 when the user sends it.
+**Steps 1 and 2 are complete. Steps 3 and 4 are complete locally. Step 5 has not started and is awaiting approval.**
 
-The project has validated schemas, directive guardrails, an independent schedule checker, tests, dependencies and an API scaffold. **There is no implemented optimizer or real LLM integration yet, and no deployment was performed by the assistant.**
+The project has validated schemas, directive guardrails, an independent schedule checker, the continuous LP optimizer, tests, dependencies and an API scaffold. **There is no real LLM integration yet, the optimizer is deliberately not wired into the route, and no deployment was performed by the assistant.** Read `STEP_4_RESULTS.md` first for the newest evidence and limits.
 
 The user's priorities are to understand the problem and rules, avoid invented requirements, build thoughtfully according to the saved plan, and ask before each next stage. Deployment is explicitly a later job. Continue from existing files; do not restart planning or overwrite the user's work.
 
