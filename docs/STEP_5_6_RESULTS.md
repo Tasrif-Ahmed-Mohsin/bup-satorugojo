@@ -145,7 +145,29 @@ serves the endpoint. It was verified keyless (`/health` 200, `/optimize-energy` 
 and with the key (public samples 10/10 valid with exact costs). p95 was 1.52 s sequential and 1.52
 and 1.54 s at concurrency 5 and 10, with 60/60 valid.
 
-## Submission
+## Version 1.4.1: explicit repair shapes
+
+The repair prompt now names the exact allowed adjustment keys for every directive type. A new
+regression test reproduces an unwanted `minimum_energy_kwh` field in a `no_discharge_window`
+reply and checks that a corrected second reply passes the unchanged guardrails. The experimental
+"fully charged" interpretation rule remains reverted. The measurement script now supplies the
+same validation callback used by the API, so its real-model runs also exercise guarded repair.
+
+Verified on 18 September 2026:
+
+- 263 tests passed; Ruff passed; all ten offline LP costs matched exactly.
+- Two full real-model measurements each passed 18/18 public notes and 67/67 own paraphrases.
+- The built 1.4.1 image passed all ten public samples before deployment, and keyless startup
+  returned `/health` 200 and `/optimize-energy` `not_configured`.
+- After deployment, a separate machine checked all ten public cases and 60 concurrent requests:
+  every plan passed trusted replay and matched its published cost. Nearest-rank p95 was 1.30 s
+  sequential, 1.34 s at concurrency 5, and 1.44 s at concurrency 10. Malformed JSON returned 400.
+- The public endpoint runs `gridwise:1.4.1`, image ID beginning `d79e236f3916`, with restart policy
+  `unless-stopped`. The stopped `gridwise-rollback-140` container preserves the previous release.
+- Docker Hub still publishes 1.4.0 at the documented digest. Publication of 1.4.1 was blocked by
+  automatic approval review and awaits explicit approval; no 1.4.1 registry digest is claimed.
+
+## Submission status
 
 The endpoint, repository, image reference and video were submitted through the organizer's form
 before the deadline. Nineteen edge-case requests were then run against the live service; see the

@@ -83,7 +83,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application = FastAPI(
         title="GridWise",
-        version="1.0.0",
+        version="1.4.1",
         description="Operator notes to a validated minimum-cost 24-hour energy schedule.",
         lifespan=lifespan,
     )

@@ -317,3 +317,33 @@ async def test_the_correction_never_quotes_note_text():
         await interpret_notes(client, SETTINGS, scenario, validate=_validator(scenario))
     after_notes = handler.calls[1]["messages"][1]["content"].split("</notes>", 1)[1]
     assert marker not in after_notes
+
+
+@pytest.mark.anyio
+async def test_a_stray_key_is_named_in_the_correction_and_repaired():
+    """Observed live: no_discharge_window came back with an extra reserve key."""
+    stray = json.dumps(
+        {
+            "directive_interpretation": [
+                {
+                    "note_index": 0,
+                    "applies": True,
+                    "directive_type": "no_discharge_window",
+                    "structured_adjustment": {"hours": [15, 16], "minimum_energy_kwh": 0},
+                    "explanation": "No discharging before 5 PM.",
+                }
+            ]
+        }
+    )
+    clean = stray.replace(', "minimum_energy_kwh": 0', "")
+    handler = _responder(
+        httpx.Response(200, json=_completion(stray)),
+        httpx.Response(200, json=_completion(clean)),
+    )
+    scenario = _scenario(("No discharging from 3 PM to 5 PM.",))
+    async with _client(handler) as client:
+        envelope = await interpret_notes(client, SETTINGS, scenario, validate=_validator(scenario))
+    assert validate_directives(scenario, envelope)[0].structured_adjustment.hours == [15, 16]
+    correction = handler.calls[1]["messages"][1]["content"]
+    assert 'no_discharge_window {"hours"}' in correction
+    assert "exactly these keys and no others" in correction

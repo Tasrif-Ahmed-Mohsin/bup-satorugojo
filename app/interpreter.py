@@ -98,9 +98,12 @@ _REPAIRS = {
 def _correction(code: str, count: int) -> str:
     return (
         f"Your previous reply was rejected by validation because {_REPAIRS[code]}. "
-        f"Reply again with exactly {count} entries, note_index 0 to {count - 1} in order, "
-        "each using the exact structured_adjustment shape for its directive_type, hours as "
-        "unique ascending integers from 0 to 23, factor between 0 and 1, and any reserve no "
+        f"Reply again with exactly {count} entries, note_index 0 to {count - 1} in order. "
+        "Each structured_adjustment must contain exactly these keys and no others: "
+        'solar_reduction {"hours", "factor"}; minimum_battery_reserve {"hours", '
+        '"minimum_energy_kwh"}; no_charge_window {"hours"}; no_discharge_window {"hours"}; '
+        'max_grid_window {"hours", "max_grid_kwh"}; no_op uses null. Hours are unique '
+        "ascending integers from 0 to 23, factor is between 0 and 1, and any reserve is no "
         "larger than the battery capacity."
     )
 

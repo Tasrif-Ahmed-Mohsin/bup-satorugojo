@@ -205,7 +205,10 @@ def _expected(index, directive_type, adjustment):
 async def _score(client, settings, scenario, expected, label, misses):
     started = time.perf_counter()
     try:
-        envelope = await interpret_notes(client, settings, scenario)
+        envelope = await interpret_notes(
+            client, settings, scenario,
+            validate=lambda candidate: validate_directives(scenario, candidate),
+        )
         produced = validate_directives(scenario, envelope)
     except (InterpreterError, DirectiveValidationError) as error:
         misses.append({"case": label, "error": getattr(error, "code", "unknown")})

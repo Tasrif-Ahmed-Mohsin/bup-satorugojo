@@ -13,6 +13,7 @@ A real generative model is the only component that reads human language. Its out
 | | |
 |---|---|
 | Public API | `http://20.193.131.121` — `GET /health`, `POST /optimize-energy` |
+| Live service version | `1.4.1` — exact-field correction on the guarded model retry |
 | Demo page | `http://20.193.131.121/` |
 | Docker image | `tasrifahmed/gridwise:1.4.0` |
 | Image digest | `sha256:4e19c008d53d896855684f624b984f84fad684e41067953fd4ce413b9e7bdca8` |
@@ -126,7 +127,7 @@ docker pull tasrifahmed/gridwise@sha256:4e19c008d53d896855684f624b984f84fad684e4
 
 `/health` answers `{"status":"ok"}` even if the image is started without a key, so the fallback can always be checked. `/optimize-energy` needs `DEEPSEEK_API_KEY` and otherwise returns `not_configured`. Both behaviours were verified on this exact image, started with and without a key. Anonymous pull access was verified against the registry with no credentials. To build it yourself instead: `docker build -t gridwise:1.4.0 .`
 
-The public endpoint runs this same image on an Azure Ubuntu 24.04 VM (Central India, Standard D2as v4), mapped from host port 80. The container uses `--restart unless-stopped` and Docker is enabled at boot, so the endpoint returns after a VM restart.
+The public endpoint runs version **1.4.1** on an Azure Ubuntu 24.04 VM (Central India, Standard D2as v4), mapped from host port 80. The published fallback remains **1.4.0**; 1.4.1 adds exact allowed adjustment fields to the model's repair prompt. The 1.4.1 image was built and tested on the VM but has not been published to Docker Hub. The container uses `--restart unless-stopped` and Docker is enabled at boot, so the endpoint returns after a VM restart.
 
 ## How it works
 
@@ -168,13 +169,13 @@ All measured on 18 September 2026.
 
 | Check | Result |
 |---|---|
-| Unit and contract tests (`pytest -q`) | **262 passed** |
+| Unit and contract tests (`pytest -q`) | **263 passed** |
 | LP against the ten public cases, from the organizer's directives | **10/10** costs reproduced exactly, difference `0.0` |
 | Public samples end to end on the deployed service | **10/10** valid against the organizer's directives, exact costs |
-| Interpretation, organizer public notes | **18/18** in each of three repeated runs |
-| Interpretation, independent paraphrase sets | **67/67** in each of three repeated runs, across sets of 20, 23 and 24 notes |
-| Deployed latency, version 1.4.0 | p95 **1.52 s** sequential; `/health` ready 0.15 s after a restart |
-| Concurrent load, version 1.4.0 | **60/60** valid; p95 1.52 s at concurrency 5 and 1.54 s at concurrency 10 |
+| Interpretation, organizer public notes, version 1.4.1 | **18/18** in each of two repeated runs |
+| Interpretation, independent paraphrase sets, version 1.4.1 | **67/67** in each of two repeated runs, across sets of 20, 23 and 24 notes |
+| Deployed latency, version 1.4.1, measured externally | p95 **1.30 s** over ten sequential requests |
+| Concurrent load, version 1.4.1, measured externally | **60/60** valid with exact costs; p95 **1.34 s** at concurrency 5 and **1.44 s** at concurrency 10 |
 | Randomized sweep, 600 synthetic scenarios | every schedule passed replay; the rest failed in a controlled way |
 
 The paraphrase sets were written for this project from the published rules, not from any organizer answer key. They cover "cut **by** 80%" against "reduced **to** 30%, **not by** 30%", "loses 70%", "one-fifth", "a tenth of normal", "half strength", reserves as absolute kWh and as a percentage of capacity, "at 8 AM and 9 AM", "10 PM until midnight", "for two hours starting at 6 AM", non-contiguous hours, a zero grid cap, and distractors that mention batteries, tariffs or demand without changing today's schedule. The 23- and 24-note sets ran through the full deployed pipeline, so each of those directives was also applied in a replay-checked plan; the 20-note set was measured at the interpretation stage.
@@ -192,10 +193,11 @@ Offline checks that need no key and spend no credit:
 .\.venv\Scripts\python.exe -m ruff check app scripts tests
 ```
 
-`scripts/measure_interpretation.py` makes real, paid provider calls and is therefore never part of the test run.
+`scripts/measure_interpretation.py` makes real, paid provider calls and is therefore never part of the test run. In 1.4.1 it exercises the same validation-and-repair path as the API. Its 85-note measurement checks interpretation only; it does not itself optimize the paraphrase scenarios. Both fresh 1.4.1 runs passed 85/85. A regression test covers the observed extra-field failure and verifies a corrected reply is accepted without relaxing the guardrails.
 
 ## Known limitations
 
+- **Qualitative reserve wording remains uncertain.** A probe using "keep fully charged" was interpreted as a discharge ban rather than a capacity-level reserve. An experimental prompt change was reverted after causing malformed adjustments; no claim is made that this ambiguity is fixed.
 - **Cross-midnight windows are not defined by the rules.** "10 PM to 2 AM" is returned as hours `[0, 1, 22, 23]` within the same 24-hour day. That is a reasonable reading, not a confirmed one.
 - **Different overlapping solar factors fail explicitly.** The rules do not say how two reductions on the same hour combine, so rather than guess a merge rule the request returns a controlled error.
 - **One directive per note.** The contract allows exactly one interpretation per note. A note packing two separate rules keeps one; the same rules as separate notes are both extracted.
