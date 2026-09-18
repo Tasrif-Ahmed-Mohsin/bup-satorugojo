@@ -58,8 +58,10 @@ The service runs on an Azure Ubuntu 24.04 VM (Central India, Standard D2as v4) i
 
 ```bash
 curl -i http://20.193.131.121/health
-curl -s -X POST http://20.193.131.121/optimize-energy -H 'Content-Type: application/json' --data @scenario.json
+curl -s -X POST http://20.193.131.121/optimize-energy -H 'Content-Type: application/json' --data @examples/sample_request.json
 ```
+
+`examples/sample_request.json` is a complete, self-contained scenario written for this project. Its three notes exercise a solar reduction ("11 AM to 1 PM ... about 30%" becomes hours `[11, 12]` with factor `0.3`), a reserve ("from 6 PM until 9 PM" becomes hours `[18, 19, 20]` at 150 kWh) and a distractor that is correctly returned as `no_op`.
 
 No login, VPN or manual step is needed to reach it. The container uses `--restart unless-stopped` and the Docker service is enabled at boot, so the endpoint returns after a VM restart.
 

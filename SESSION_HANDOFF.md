@@ -7,9 +7,11 @@ If resuming after that date/time, confirm the current event situation before rel
 
 ## Current position
 
-**Steps 1 and 2 are complete. Steps 3 and 4 are complete locally. Step 5 has not started and is awaiting approval.**
+**Steps 1 through 6 are complete, and the service is deployed and publicly reachable.**
 
-The project has validated schemas, directive guardrails, an independent schedule checker, the continuous LP optimizer, tests, dependencies and an API scaffold. **There is no real LLM integration yet, the optimizer is deliberately not wired into the route, and no deployment was performed by the assistant.** Read `STEP_4_RESULTS.md` first for the newest evidence and limits.
+The project has validated schemas, directive guardrails, an independent schedule checker, the continuous LP optimizer, the real DeepSeek interpreter, the fully wired API, a Dockerfile, and a running deployment at `http://20.193.131.121`. Read `STEP_5_6_RESULTS.md` first, then `STEP_4_RESULTS.md`, for the newest evidence and limits.
+
+**Outstanding: the repository has not been pushed, the Docker image is not published to a registry, and no submission video exists.** The user declined to rotate the DeepSeek key before deployment; replace it after the event.
 
 The user's priorities are to understand the problem and rules, avoid invented requirements, build thoughtfully according to the saved plan, and ask before each next stage. Deployment is explicitly a later job. Continue from existing files; do not restart planning or overwrite the user's work.
 
@@ -26,7 +28,9 @@ Only using AI to write a summary, or replacing interpretation with a phrase look
 
 ## Read these files first
 
-1. `STEP_3_RESULTS.md` — actual completed work, test evidence, limitations and next checkpoint.
+1. `STEP_5_6_RESULTS.md` — newest evidence: real interpretation, wired API, deployment, and what is still outstanding.
+2. `STEP_4_RESULTS.md` — the LP optimizer and its analytical evidence.
+3. `STEP_3_RESULTS.md` — the contract and validation foundation.
 2. `STEP_2_DESIGN.md` — exact schemas, 31 source-linked requirements, mathematical formulation, provider design and unresolved rules. This records historical Step 2 decisions; its old prerequisites/tree should be interpreted alongside the newer results.
 3. `WORK_PLAN.md` — priority targets and the step-by-step sequence. The current checkpoint at its beginning supersedes historical prompts below it.
 4. `README.md` — current setup, verification commands and truthful API status.
@@ -67,7 +71,7 @@ Two independent-review findings were fixed with regression tests: alternating sm
 
 **These results establish contract/checker behavior and reference validity. They do not establish generated-plan optimality, LLM accuracy, live API readiness or deployment performance.**
 
-Current intentional API behavior: `/health` returns **503/not_ready**; a structurally valid optimization request returns **500/pipeline_not_ready**. Malformed or structurally invalid requests return sanitized **400**. Do not claim the service is ready or switch health to success before actual integration.
+Superseded: the pipeline is now complete. `/health` returns **200 `{"status":"ok"}`** when the provider is configured and the solver has imported, and `/optimize-energy` returns a replay-checked schedule. Malformed or structurally invalid requests still return sanitized **400**, and provider/solver/replay failures return sanitized **500**.
 
 ## Next implementation: Step 4
 
