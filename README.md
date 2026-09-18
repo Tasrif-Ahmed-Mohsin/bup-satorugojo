@@ -114,8 +114,8 @@ Error bodies are `{"error": {"code": ..., "message": ...}}` with fixed messages.
 The image is public on Docker Hub, needs no login to pull, and contains no credential. It listens on `0.0.0.0:8000`, runs as an unprivileged user, and has a `HEALTHCHECK` polling `/health`.
 
 ```bash
-docker pull tasrifahmed/gridwise:1.4.0
-docker run -d --name gridwise -p 8000:8000 -e DEEPSEEK_API_KEY=your-key tasrifahmed/gridwise:1.4.0
+docker pull tasrifahmed/gridwise:1.4.1
+docker run -d --name gridwise -p 8000:8000 -e DEEPSEEK_API_KEY=your-key tasrifahmed/gridwise:1.4.1
 curl -i http://localhost:8000/health
 ```
 
