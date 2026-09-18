@@ -15,8 +15,8 @@ A real generative model is the only component that reads human language. Its out
 | Public API | `http://20.193.131.121` — `GET /health`, `POST /optimize-energy` |
 | Live service version | `1.4.1` — exact-field correction on the guarded model retry |
 | Demo page | `http://20.193.131.121/` |
-| Docker image | `tasrifahmed/gridwise:1.4.0` |
-| Image digest | `sha256:4e19c008d53d896855684f624b984f84fad684e41067953fd4ce413b9e7bdca8` |
+| Docker image | `tasrifahmed/gridwise:1.4.1` |
+| Image digest | `sha256:d79e236f3916a4f0e766e7bf4b3e4c8651b7f75cb020df2fe6b4cbbc5f06f87d` |
 | Model / provider | `deepseek-flash` via the hosted DeepSeek API, JSON output mode, thinking disabled |
 | Optimizer | SciPy `linprog` with the HiGHS solver, continuous linear program |
 | Architecture diagram | `assets/architecture.html` — open in a browser |
@@ -122,12 +122,12 @@ curl -i http://localhost:8000/health
 To pin the exact build, pull by digest:
 
 ```bash
-docker pull tasrifahmed/gridwise@sha256:4e19c008d53d896855684f624b984f84fad684e41067953fd4ce413b9e7bdca8
+docker pull tasrifahmed/gridwise@sha256:d79e236f3916a4f0e766e7bf4b3e4c8651b7f75cb020df2fe6b4cbbc5f06f87d
 ```
 
-`/health` answers `{"status":"ok"}` even if the image is started without a key, so the fallback can always be checked. `/optimize-energy` needs `DEEPSEEK_API_KEY` and otherwise returns `not_configured`. Both behaviours were verified on this exact image, started with and without a key. Anonymous pull access was verified against the registry with no credentials. To build it yourself instead: `docker build -t gridwise:1.4.0 .`
+`/health` answers `{"status":"ok"}` even if the image is started without a key, so the fallback can always be checked. `/optimize-energy` needs `DEEPSEEK_API_KEY` and otherwise returns `not_configured`. Both behaviours were verified on this exact image, started with and without a key. Anonymous pull access was verified against the registry with no credentials. To build it yourself instead: `docker build -t gridwise:1.4.1 .`
 
-The public endpoint runs version **1.4.1** on an Azure Ubuntu 24.04 VM (Central India, Standard D2as v4), mapped from host port 80. The published fallback remains **1.4.0**; 1.4.1 adds exact allowed adjustment fields to the model's repair prompt. The 1.4.1 image was built and tested on the VM but has not been published to Docker Hub. The container uses `--restart unless-stopped` and Docker is enabled at boot, so the endpoint returns after a VM restart.
+The public endpoint runs version **1.4.1** on an Azure Ubuntu 24.04 VM (Central India, Standard D2as v4), mapped from host port 80. The container uses `--restart unless-stopped` and Docker is enabled at boot, so the endpoint returns after a VM restart.
 
 ## How it works
 
