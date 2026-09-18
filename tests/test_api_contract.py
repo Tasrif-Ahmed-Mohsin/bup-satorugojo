@@ -30,8 +30,17 @@ def test_health_reports_ready_only_when_the_pipeline_is_configured():
         assert response.json()["status"] == "ok"
 
 
-def test_health_reports_not_ready_without_provider_configuration():
+def test_health_is_ready_without_a_key_so_the_keyless_image_can_be_checked():
+    """The published image carries no secret; it must still reach /health."""
     with TestClient(create_app(_settings())) as client:
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok"}
+
+
+def test_health_is_not_ready_when_the_solver_cannot_warm_up(monkeypatch):
+    monkeypatch.setattr("app.main.warm_up", lambda: False)
+    with TestClient(create_app(_settings(api_key="configured"))) as client:
         response = client.get("/health")
         assert response.status_code == 503
         assert response.json() == {"status": "not_ready"}

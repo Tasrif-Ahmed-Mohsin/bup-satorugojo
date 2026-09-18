@@ -8,6 +8,7 @@ no credential ever reaches a client or a log line.
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from time import perf_counter
@@ -26,6 +27,7 @@ from app.optimizer import OptimizerError, optimize_scenario, warm_up
 from app.schemas import OptimizationResponse, ScenarioRequest
 
 TOLERANCE = 0.01
+logger = logging.getLogger("gridwise")
 # Read once at import; the page is static and carries no credential.
 _UI_PAGE = (Path(__file__).resolve().parent / "ui.html").read_text(encoding="utf-8")
 
@@ -65,9 +67,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     )
                 except httpx.HTTPError:
                     pass
-            # Readiness means the solver is warm and configuration is present.
-            # It deliberately does not spend a model call on every probe.
-            application.state.ready = configuration.configured and solver_ready
+            # Readiness means the process is up and the solver is warm. It does
+            # not require the provider key: the published image carries no
+            # secret, so an organizer starting it must still reach /health.
+            # Without a key, /optimize-energy refuses with not_configured and
+            # never invents a schedule. No model call is spent on a probe.
+            application.state.ready = solver_ready
+            if not configuration.configured:
+                # Presence only; the value is never read into a log line.
+                logger.warning(
+                    "DEEPSEEK_API_KEY is not set; /optimize-energy will return "
+                    "not_configured until it is provided."
+                )
             yield
 
     application = FastAPI(

@@ -111,6 +111,22 @@ succeed as well as configuration being present.
 The Docker Hub access token used for this push was pasted into the assistant chat by the user and
 was set never to expire. It should be revoked after the event, along with the DeepSeek key.
 
+## Version 1.3.0 and the keyless image
+
+The rubric awards four points for a pullable image that "reaches /health using the documented
+command", while also requiring that the image contain no credential. Up to 1.2.0, `/health` reported
+`not_ready` whenever `DEEPSEEK_API_KEY` was absent, so an organizer starting the published image
+without our key would have failed that check. From 1.3.0, `/health` reports ready once the process is
+up and the warm-up solve has succeeded, and a missing key is logged at startup (presence only).
+`/optimize-energy` still refuses with `not_configured` rather than inventing a schedule. Both
+behaviours were verified on the published image itself, started on the VM with and without a key.
+
+Version 1.3.0, digest `sha256:93d0b1f51466aff466402fe2bf4c00659341304407bcd7a5ca5e950e9569d6e6`,
+serves the endpoint. Anonymous pull was verified against the registry. On the live service: the
+public samples returned 10/10 valid with exact costs, p95 1.44 s sequential, and 60/60 valid under
+concurrency 5 and 10. `scripts/check_endpoint.py` was added as the documented public-sample test
+procedure, and `examples/sample_response.json` holds a real response from the deployed service.
+
 ## Submission
 
 The endpoint, repository, image reference and video were submitted through the organizer's form
