@@ -261,6 +261,22 @@ def solve_schedule(scenario: ScenarioRequest, bounds: list[HourBounds]) -> Sched
     return _reconstruct(scenario, bounds, values)
 
 
+def warm_up() -> bool:
+    """Pay the solver's first-call setup at startup, not on a judged request.
+
+    The first HiGHS solve in a fresh process is markedly slower than the rest,
+    which would otherwise land on whoever calls the service first.
+    """
+    cost = np.zeros(VARIABLES)
+    a_eq = np.zeros((1, VARIABLES))
+    a_eq[0, GRID] = 1.0
+    try:
+        _solve(cost, a_eq, np.zeros(1), [(0.0, 1.0)] * VARIABLES)
+    except OptimizerError:
+        return False
+    return True
+
+
 def _format(value: float) -> str:
     text = f"{value:.2f}"
     return text.rstrip("0").rstrip(".") if "." in text else text

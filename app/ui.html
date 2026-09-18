@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GridWise</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --line:#262d36; --text:#e6edf3; --muted:#8b949e;
+    --grid:#58a6ff; --solar:#e3b341; --batt:#3fb950; --demand:#f78166; --accent:#58a6ff;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f6f8fa; --panel:#ffffff; --line:#d8dee4; --text:#1f2328; --muted:#636c76;
+      --grid:#0969da; --solar:#bf8700; --batt:#1a7f37; --demand:#cf222e; --accent:#0969da;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 16px 64px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:26px;margin:0;letter-spacing:-.02em}
+  .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);
+       border-radius:999px;padding:3px 10px}
+  .lede{color:var(--muted);margin:0 0 22px;max-width:70ch}
+  .pipe{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;
+        color:var(--muted);background:var(--panel);border:1px solid var(--line);
+        border-radius:8px;padding:10px 12px;margin-bottom:22px;overflow-x:auto;white-space:nowrap}
+  .pipe b{color:var(--accent);font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+     margin:0 0 12px;font-weight:600}
+  textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);
+           border-radius:8px;padding:11px 12px;font:14px/1.6 inherit;resize:vertical;min-height:96px}
+  textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 18px;
+         font:600 14px inherit;cursor:pointer}
+  button:hover{filter:brightness(1.08)} button:disabled{opacity:.55;cursor:default}
+  button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .hint{color:var(--muted);font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px}
+  .card{border:1px solid var(--line);border-radius:10px;padding:13px 14px;background:var(--bg)}
+  .card .note{color:var(--muted);font-size:13px;font-style:italic;margin-bottom:9px}
+  .kind{display:inline-block;font:600 11.5px ui-monospace,monospace;padding:3px 8px;
+        border-radius:6px;background:rgba(88,166,255,.15);color:var(--accent);margin-bottom:8px}
+  .kind.off{background:rgba(139,148,158,.16);color:var(--muted)}
+  .adj{font:12.5px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text);
+       word-break:break-word;margin-bottom:7px}
+  .why{font-size:13px;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{border:1px solid var(--line);border-radius:10px;padding:13px 14px;background:var(--bg)}
+  .stat .v{font-size:23px;font-weight:650;letter-spacing:-.02em}
+  .stat .k{font-size:12px;color:var(--muted);margin-top:2px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  table{width:100%;border-collapse:collapse;font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+  th,td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;text-align:right;position:sticky;top:0;background:var(--panel)}
+  th:first-child,td:first-child{text-align:left}
+  .scroll{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:9px}
+  .err{border-color:var(--demand);color:var(--demand)}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;
+        border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .hide{display:none}
+  svg{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>GridWise</h1>
+    <span class="tag" id="status">checking service…</span>
+  </header>
+  <p class="lede">Campus operator notes written in ordinary language become a validated,
+     minimum-cost 24-hour electricity schedule. Edit the notes below and run it.</p>
+
+  <div class="pipe">request &rarr; <b>DeepSeek interpretation</b> &rarr; deterministic guardrails
+     &rarr; <b>linear program</b> &rarr; independent replay &rarr; response</div>
+
+  <div class="panel">
+    <h2>Operator notes — one per line, up to three</h2>
+    <textarea id="notes" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="run">Run optimization</button>
+      <button class="ghost" id="reset">Reset notes</button>
+      <span class="hint" id="hint">Uses a fixed 24-hour demand, solar and tariff profile.</span>
+    </div>
+  </div>
+
+  <div id="out" class="hide">
+    <div class="panel">
+      <h2>Interpretation — one entry per note</h2>
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Result</h2>
+      <div class="stats" id="stats"></div>
+      <p class="why" id="summary" style="margin:14px 0 0"></p>
+    </div>
+
+    <div class="panel">
+      <h2>24-hour plan</h2>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--grid)"></i>grid import</span>
+        <span><i class="sw" style="background:var(--solar)"></i>solar used</span>
+        <span><i class="sw" style="background:var(--batt)"></i>battery discharge</span>
+        <span><i class="sw" style="background:var(--demand)"></i>demand</span>
+        <span><i class="sw" style="background:var(--muted)"></i>battery energy</span>
+      </div>
+      <div id="chart"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Hourly detail</h2>
+      <div class="scroll"><table id="table"></table></div>
+    </div>
+  </div>
+
+  <div class="panel err hide" id="error"></div>
+</div>
+
+<script>
+const DEFAULT_NOTES = [
+  "Panel cleaning from 11 AM to 1 PM will leave only about 30% of the usual solar output.",
+  "Keep at least 150 kWh in the battery from 6 PM until 9 PM for the evening exams.",
+  "The library will announce new opening hours next month."
+];
+
+const DEMAND = [120,110,105,100,100,110,140,170,190,200,205,210,215,210,200,195,200,220,240,230,200,175,150,130];
+const SOLAR  = [0,0,0,0,0,0,10,45,90,130,160,175,180,170,145,105,60,20,0,0,0,0,0,0];
+const tariffOf = h => h < 6 ? 6 : (h >= 17 && h <= 21 ? 9 : 7.5);
+const BATTERY = {capacity_kwh:400, initial_energy_kwh:180, minimum_energy_kwh:60,
+                 max_charge_kwh_per_hour:80, max_discharge_kwh_per_hour:80};
+
+const $ = id => document.getElementById(id);
+const fmt = (n,d=2) => Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+
+$("notes").value = DEFAULT_NOTES.join("\n");
+$("reset").onclick = () => { $("notes").value = DEFAULT_NOTES.join("\n"); };
+
+fetch("health").then(r => r.json()).then(d => {
+  $("status").textContent = d.status === "ok" ? "service ready" : "service not ready";
+}).catch(() => { $("status").textContent = "service unreachable"; });
+
+function scenario(notes){
+  return {
+    scenario_id: "ui-demo",
+    operator_notes: notes,
+    hours: Array.from({length:24}, (_,h) => ({
+      hour:h, demand_kwh:DEMAND[h], solar_kwh:SOLAR[h], tariff_bdt_per_kwh:tariffOf(h)
+    })),
+    battery: BATTERY
+  };
+}
+
+function renderCards(items, notes){
+  $("cards").innerHTML = items.map(d => {
+    const active = d.directive_type !== "no_op";
+    const adj = d.structured_adjustment;
+    let detail = "no scheduling change";
+    if (adj) {
+      const hrs = adj.hours.length ? adj.hours.join(", ") : "none";
+      const extra = adj.factor !== undefined ? `factor ${adj.factor}`
+        : adj.minimum_energy_kwh !== undefined ? `${fmt(adj.minimum_energy_kwh)} kWh reserve`
+        : adj.max_grid_kwh !== undefined ? `max ${fmt(adj.max_grid_kwh)} kWh` : "";
+      detail = `hours [${hrs}]${extra ? " · " + extra : ""}`;
+    }
+    return `<div class="card">
+      <div class="note">“${(notes[d.note_index]||"").replace(/</g,"&lt;")}”</div>
+      <span class="kind ${active?"":"off"}">${d.directive_type}</span>
+      <div class="adj">${detail}</div>
+      <div class="why">${(d.explanation||"").replace(/</g,"&lt;")}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderStats(r){
+  const cells = [
+    ["৳ " + fmt(r.total_cost_bdt), "total grid cost"],
+    [fmt(r.total_grid_kwh) + " kWh", "grid energy imported"],
+    [fmt(r.peak_grid_kwh) + " kWh", "peak hour import"],
+    [fmt(r.hourly_plan[23].battery_energy_after_kwh) + " kWh", "battery at midnight"]
+  ];
+  $("stats").innerHTML = cells.map(([v,k]) =>
+    `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join("");
+  $("summary").textContent = r.plan_summary;
+}
+
+function renderChart(plan){
+  const W=1160,H=300,PL=46,PR=46,PT=14,PB=26;
+  const iw=W-PL-PR, ih=H-PT-PB, bw=iw/24;
+  const top = Math.max(...plan.map(p => p.grid_kwh + p.solar_used_kwh +
+                (p.battery_action==="discharge"?p.battery_kwh:0)), ...DEMAND) * 1.1;
+  const y = v => PT + ih - (v/top)*ih;
+  const cap = BATTERY.capacity_kwh;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="hourly plan">`;
+  for (let g=0; g<=4; g++){
+    const v = top*g/4, yy = y(v);
+    s += `<line x1="${PL}" y1="${yy}" x2="${W-PR}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
+    s += `<text x="${PL-7}" y="${yy+4}" text-anchor="end" font-size="10" fill="var(--muted)">${Math.round(v)}</text>`;
+  }
+  plan.forEach((p,h) => {
+    const x = PL + h*bw + bw*0.16, w = bw*0.68;
+    let acc = 0;
+    const seg = (val,col) => {
+      if (val <= 0.0001) return;
+      const hgt = (val/top)*ih;
+      s += `<rect x="${x.toFixed(1)}" y="${(y(acc)-hgt).toFixed(1)}" width="${w.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${col}"/>`;
+      acc += val;
+    };
+    seg(p.grid_kwh, "var(--grid)");
+    seg(p.solar_used_kwh, "var(--solar)");
+    seg(p.battery_action==="discharge" ? p.battery_kwh : 0, "var(--batt)");
+    if (h % 3 === 0)
+      s += `<text x="${(x+w/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${h}</text>`;
+  });
+  const dl = DEMAND.map((d,h) => `${(PL+h*bw+bw/2).toFixed(1)},${y(d).toFixed(1)}`).join(" ");
+  s += `<polyline points="${dl}" fill="none" stroke="var(--demand)" stroke-width="2" stroke-dasharray="5 3"/>`;
+  const bl = plan.map((p,h) => `${(PL+h*bw+bw/2).toFixed(1)},${(PT+ih-(p.battery_energy_after_kwh/cap)*ih).toFixed(1)}`).join(" ");
+  s += `<polyline points="${bl}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>`;
+  s += `<text x="${W-PR+7}" y="${PT+9}" font-size="10" fill="var(--muted)">${cap}</text>`;
+  s += `<text x="${W-PR+7}" y="${PT+ih}" font-size="10" fill="var(--muted)">0</text>`;
+  s += `</svg>`;
+  $("chart").innerHTML = s;
+}
+
+function renderTable(plan){
+  const head = `<tr><th>hour</th><th>tariff</th><th>demand</th><th>grid</th><th>solar</th>
+    <th>battery</th><th>kWh</th><th>stored after</th></tr>`;
+  const rows = plan.map(p => `<tr>
+    <td>${String(p.hour).padStart(2,"0")}:00</td><td>${fmt(tariffOf(p.hour))}</td>
+    <td>${fmt(DEMAND[p.hour])}</td><td>${fmt(p.grid_kwh)}</td><td>${fmt(p.solar_used_kwh)}</td>
+    <td>${p.battery_action}</td><td>${fmt(p.battery_kwh)}</td>
+    <td>${fmt(p.battery_energy_after_kwh)}</td></tr>`).join("");
+  $("table").innerHTML = head + rows;
+}
+
+$("run").onclick = async () => {
+  const notes = $("notes").value.split("\n").map(s => s.trim()).filter(Boolean);
+  $("error").classList.add("hide");
+  if (notes.length < 1 || notes.length > 3){
+    $("error").textContent = "Enter between one and three notes, one per line.";
+    $("error").classList.remove("hide");
+    return;
+  }
+  $("run").disabled = true;
+  $("hint").innerHTML = `<span class="spin"></span> interpreting and optimizing…`;
+  const t0 = performance.now();
+  try {
+    const res = await fetch("optimize-energy", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(scenario(notes))
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || ("HTTP " + res.status));
+    renderCards(body.directive_interpretation, notes);
+    renderStats(body);
+    renderChart(body.hourly_plan);
+    renderTable(body.hourly_plan);
+    $("out").classList.remove("hide");
+    $("hint").textContent = `answered in ${((performance.now()-t0)/1000).toFixed(2)} s`;
+  } catch (e){
+    $("error").textContent = "Could not produce a plan: " + e.message;
+    $("error").classList.remove("hide");
+    $("hint").textContent = "Uses a fixed 24-hour demand, solar and tariff profile.";
+  } finally {
+    $("run").disabled = false;
+  }
+};
+</script>
+</body>
+</html>

@@ -83,10 +83,25 @@ The remote held no prior history, so nothing was overwritten and no force push w
 anonymous GitHub API request returns 404, confirming the repository is private as the rules require
 during the event; it must be made public after the deadline.
 
-The image is published as `tasrifahmed/gridwise:1.0.0` and `:latest`, digest
-`sha256:51247f632d9ce30863d7d47b61bc0e4dd2ba2057ce9f6014ed3aaa3330a25b80`. Anonymous pull access
+The image is published as `tasrifahmed/gridwise:1.1.0` and `:latest`, digest
+`sha256:e71f2661443313c97e6b341c72e94ec0ff0fad42e217b47ad3d1bdb00cb0cd1f`. Anonymous pull access
 was verified directly against the registry with no credentials: the manifest returns HTTP 200 and
-the digest matches the running container's image.
+the digest matches the running container's image. Version 1.0.0 was the first published build,
+before the demo page and startup warm-up were added.
+
+## Demo page and cold start
+
+A `GET /` page was added so the pipeline can be shown to a person rather than read as JSON. It is a
+single static HTML file with no external assets, calls the same public `/optimize-energy` a judge
+calls, and holds no privileged path of its own. It is excluded from the OpenAPI schema, so the
+contract test still sees exactly the two required routes.
+
+Redeploying exposed a cold-start cliff: the first request to a fresh container took 8.09 s, because
+HiGHS pays a one-off setup cost on its first solve and the provider connection was not yet open.
+Startup now runs a throwaway solve and opens the provider connection before reporting ready. The
+first request after a restart is now 1.12 s and `/health` answers in 0.15 s. The startup probe lists
+models; it runs no inference and spends no tokens. Readiness now requires the warm-up solve to
+succeed as well as configuration being present.
 
 The Docker Hub access token used for this push was pasted into the assistant chat by the user and
 was set never to expire. It should be revoked after the event, along with the DeepSeek key.

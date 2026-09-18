@@ -9,22 +9,25 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 from time import perf_counter
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException
 
 from app.config import Settings, load_settings
 from app.directives import DirectiveValidationError, validate_directives
 from app.interpreter import InterpreterError, interpret_notes
 from app.jsonio import JsonPayloadError, load_json
-from app.optimizer import OptimizerError, optimize_scenario
+from app.optimizer import OptimizerError, optimize_scenario, warm_up
 from app.schemas import OptimizationResponse, ScenarioRequest
 
 TOLERANCE = 0.01
+# Read once at import; the page is static and carries no credential.
+_UI_PAGE = (Path(__file__).resolve().parent / "ui.html").read_text(encoding="utf-8")
 
 
 def _error(status: int, code: str, message: str) -> JSONResponse:
@@ -48,9 +51,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ) as client:
             application.state.client = client
             application.state.settings = configuration
-            # Readiness means the solver imported and configuration is present.
+            solver_ready = await asyncio.to_thread(warm_up)
+            if configuration.configured:
+                # Open the connection so the first real request does not also
+                # pay for DNS and the TLS handshake. This lists models; it runs
+                # no inference and spends no tokens. Failure is not fatal:
+                # reachability is re-established per request.
+                try:
+                    await client.get(
+                        f"{configuration.base_url}/models",
+                        headers={"Authorization": f"Bearer {configuration.api_key}"},
+                        timeout=httpx.Timeout(5.0, connect=3.0),
+                    )
+                except httpx.HTTPError:
+                    pass
+            # Readiness means the solver is warm and configuration is present.
             # It deliberately does not spend a model call on every probe.
-            application.state.ready = configuration.configured
+            application.state.ready = configuration.configured and solver_ready
             yield
 
     application = FastAPI(
@@ -72,6 +89,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @application.exception_handler(Exception)
     async def unexpected_error(_: Request, __: Exception) -> JSONResponse:
         return _error(500, "internal_error", "The request could not be completed.")
+
+    @application.get("/", include_in_schema=False)
+    async def demo_page() -> HTMLResponse:
+        # A convenience page for humans. It calls the same public endpoint a
+        # judge calls and has no privileged path of its own.
+        return HTMLResponse(content=_UI_PAGE)
 
     @application.get("/health")
     async def health() -> JSONResponse:

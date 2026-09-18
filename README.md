@@ -12,6 +12,7 @@ A real generative model is the only component that reads human language. Its out
 
 | Endpoint | Behaviour |
 |---|---|
+| `GET /` | A small demo page for humans: edit the operator notes in plain English, run them, and see the interpretations, the 24-hour plan and the cost. It calls the same public `/optimize-energy` a judge calls and has no privileged path of its own. Excluded from the OpenAPI schema. |
 | `GET /health` | `200` with `{"status":"ok"}` once the provider configuration is present and the solver has imported. `503` with `{"status":"not_ready"}` otherwise. |
 | `POST /optimize-energy` | `200` with the interpretations, 24 hourly decisions, recomputed totals and a short summary. `400` for malformed or structurally invalid input. `500`, controlled and sanitized, for provider, interpretation, solver or replay failure. |
 
@@ -53,6 +54,7 @@ The service runs on an Azure Ubuntu 24.04 VM (Central India, Standard D2as v4) i
 
 | | |
 |---|---|
+| Demo page | `http://20.193.131.121/` |
 | Health | `http://20.193.131.121/health` |
 | Optimize | `http://20.193.131.121/optimize-energy` |
 
@@ -70,7 +72,7 @@ No login, VPN or manual step is needed to reach it. The container uses `--restar
 The image contains no credential; the key is supplied at run time.
 
 ```bash
-docker build -t gridwise:1.0.0 .
+docker build -t gridwise:1.1.0 .
 docker run -d --name gridwise --restart unless-stopped -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here gridwise:1.0.0
 curl -i http://localhost/health
 ```
@@ -83,22 +85,22 @@ The image is public on Docker Hub and requires no login to pull:
 
 | | |
 |---|---|
-| Tag | `tasrifahmed/gridwise:1.0.0` (also `:latest`) |
-| Digest | `sha256:51247f632d9ce30863d7d47b61bc0e4dd2ba2057ce9f6014ed3aaa3330a25b80` |
+| Tag | `tasrifahmed/gridwise:1.1.0` (also `:latest`) |
+| Digest | `sha256:e71f2661443313c97e6b341c72e94ec0ff0fad42e217b47ad3d1bdb00cb0cd1f` |
 
 ```bash
-docker pull tasrifahmed/gridwise:1.0.0
-docker run -d --name gridwise -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here tasrifahmed/gridwise:1.0.0
+docker pull tasrifahmed/gridwise:1.1.0
+docker run -d --name gridwise -p 80:8000 -e DEEPSEEK_API_KEY=your-key-here tasrifahmed/gridwise:1.1.0
 curl -i http://localhost/health
 ```
 
 To pin the exact build, pull by digest:
 
 ```bash
-docker pull tasrifahmed/gridwise@sha256:51247f632d9ce30863d7d47b61bc0e4dd2ba2057ce9f6014ed3aaa3330a25b80
+docker pull tasrifahmed/gridwise@sha256:e71f2661443313c97e6b341c72e94ec0ff0fad42e217b47ad3d1bdb00cb0cd1f
 ```
 
-Anonymous pull access was verified against the registry with no credentials: the manifest for `1.0.0` returns HTTP 200 and the digest above. This is the same image currently serving the public endpoint.
+Anonymous pull access was verified against the registry with no credentials: the manifest for `1.1.0` returns HTTP 200 and the digest above. This is the same image currently serving the public endpoint.
 
 ## Verification
 
@@ -130,7 +132,9 @@ One further script does make real, paid provider calls and is therefore never pa
 | Readiness | `/health` answered `200 ok` **1.04 s** after process start (target ≤ 60 s) |
 | Request latency | mean 0.88 s, **p95 1.35 s**, max 1.35 s (target ≤ 5 s for full marks) |
 
-Against the **deployed public endpoint** at `http://20.193.131.121`, measured from a separate machine over the internet: `/health` answered `200 ok` in 0.15 s, all **10/10** cases returned `200` with valid schedules and exact reference costs, request latency was mean 1.11 s and **p95 1.29 s**, and malformed JSON and a structurally invalid body both returned `400` with no input echoed.
+Against the **deployed public endpoint** at `http://20.193.131.121`, measured from a separate machine over the internet: `/health` answered `200 ok` **0.15 s** after a container restart, all **10/10** cases returned `200` with valid schedules and exact reference costs, request latency was median 1.15 s and **p95 1.38 s**, and malformed JSON and a structurally invalid body both returned `400` with no input echoed. Under concurrent load, 30 requests at concurrency 5 and 30 more at concurrency 10 gave **60/60 valid**.
+
+The **first** request to a fresh container originally took 8.09 s, because HiGHS pays a one-off setup cost on its first solve and the provider connection had to be opened. Startup now performs a throwaway solve and opens the provider connection before reporting ready, which brought the first request down to **1.12 s**. That startup probe lists models; it runs no inference and spends no tokens.
 
 These runs were sequential on one machine. They are not a load test and do not measure behaviour under concurrent judging traffic.
 
