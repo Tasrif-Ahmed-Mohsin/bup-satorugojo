@@ -21,3 +21,11 @@ build/
 dist/
 .coverage
 htmlcov/
+
+# Organizer documents are not redistributed; the public sample JSON stays for tests.
+BUP_CSE_FEST_2026_Participant_Docs/*.pdf
+readable_rules/
+# Internal working notes, kept locally only.
+SESSION_HANDOFF.md
+WORK_PLAN.md
+assets/VIDEO_SCRIPT.md

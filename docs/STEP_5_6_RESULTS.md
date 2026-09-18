@@ -72,7 +72,6 @@ static and carry no scenario text, input value, stack trace or credential.
   test and does not predict behaviour under the judges' actual traffic.
 - Accuracy is 38/38 on the public notes and this project's own paraphrases. Hidden cases may use
   wording neither set covers; no claim is made about them.
-- **No submission video exists.**
 - Cross-midnight and equal-start-end time windows remain unresolved in the supplied rules and are
   not claimed as answered. Different overlapping solar factors still fail explicitly.
 
@@ -106,8 +105,14 @@ succeed as well as configuration being present.
 The Docker Hub access token used for this push was pasted into the assistant chat by the user and
 was set never to expire. It should be revoked after the event, along with the DeepSeek key.
 
-## Remaining work
+## Submission
 
-1. Record and host the video, no longer than three minutes.
-2. Submit the endpoint, repository, image reference and video links.
-3. After the deadline: make the repository public, and revoke the DeepSeek key and Docker Hub token.
+The endpoint, repository, image reference and video were submitted through the organizer's form
+before the deadline. Nineteen edge-case requests were then run against the live service; see the
+README's "Edge cases against the live endpoint" section.
+
+## After the deadline
+
+1. Make the repository public, as the rules require for evaluation.
+2. Revoke the DeepSeek key and the Docker Hub token; both appeared in the assistant chat.
+3. Keep the VM running, because judging may continue after submission.
