@@ -1,0 +1,8 @@
+* text=auto
+*.py text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.pdf binary
+# Preserve organizer-provided originals byte for byte across checkouts.
+BUP_CSE_FEST_2026_Participant_Docs/** -text

@@ -1,0 +1,23 @@
+# Local credentials; commit only the example configuration.
+.env
+.env.*
+!.env.example
+
+# SSH credentials and private key downloads are never project artifacts.
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Local runtime and scratch files.
+.venv/
+__pycache__/
+*.pyc
+tmp/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/

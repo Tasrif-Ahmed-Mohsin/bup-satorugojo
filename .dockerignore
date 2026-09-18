@@ -1,0 +1,18 @@
+# Never include local credentials in the Docker build context.
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+**/*.pem
+**/*.key
+**/id_rsa*
+**/id_ed25519*
+
+.git
+.venv
+__pycache__
+tmp
+.pytest_cache
+.ruff_cache
+*.egg-info
