@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GridWise Architecture</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#111418; --muted:#5b6672; --line:#d6dce3;
+    --llm:#8957e5; --guard:#bf8700; --opt:#0969da; --check:#1a7f37; --api:#495057;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .slide{max-width:1500px;margin:0 auto;padding:34px 40px}
+  h1{font-size:40px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:19px;margin:0 0 26px}
+  .flow{display:flex;align-items:stretch;gap:0;margin-bottom:26px;flex-wrap:nowrap}
+  .box{flex:1;border:2px solid var(--line);border-radius:12px;padding:15px 15px 13px;min-width:0;background:#fff}
+  .box .n{font:700 12px ui-monospace,monospace;color:var(--muted);letter-spacing:.08em}
+  .box h3{font-size:19px;margin:5px 0 7px;letter-spacing:-.01em;line-height:1.2}
+  .box p{font-size:14.5px;color:var(--muted);margin:0;line-height:1.45}
+  .box .who{display:inline-block;margin-top:10px;font:700 11.5px ui-monospace,monospace;
+            padding:3px 9px;border-radius:6px}
+  .arrow{display:flex;align-items:center;justify-content:center;width:40px;flex:0 0 40px;
+         color:var(--muted);font-size:26px;font-weight:300}
+  .b-llm{border-color:var(--llm)} .b-llm .who{background:#f3ebff;color:var(--llm)}
+  .b-guard{border-color:var(--guard)} .b-guard .who{background:#fdf3d6;color:var(--guard)}
+  .b-opt{border-color:var(--opt)} .b-opt .who{background:#e3f0ff;color:var(--opt)}
+  .b-check{border-color:var(--check)} .b-check .who{background:#e4f7e8;color:var(--check)}
+  .b-api .who{background:#eef1f4;color:var(--api)}
+  .band{border:2px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:22px;
+        background:#fafbfc}
+  .band h4{margin:0 0 9px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .band .eq{font:16px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--ink)}
+  .band .eq b{color:var(--opt)}
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .col h4{margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .col ul{margin:0;padding-left:19px}
+  .col li{font-size:15px;margin-bottom:5px;color:var(--ink)}
+  .col li span{color:var(--muted)}
+  .facts{display:flex;gap:26px;flex-wrap:wrap;margin-top:24px;padding-top:18px;border-top:2px solid var(--line)}
+  .fact .v{font-size:27px;font-weight:700;letter-spacing:-.02em}
+  .fact .k{font-size:13.5px;color:var(--muted)}
+  .fact .v.g{color:var(--check)}
+  @media print{body{-webkit-print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1>GridWise</h1>
+  <p class="sub">Campus operator notes in ordinary language &rarr; a validated, minimum-cost 24-hour electricity schedule</p>
+
+  <div class="flow">
+    <div class="box b-api">
+      <div class="n">01</div>
+      <h3>Request</h3>
+      <p>24 hourly demand, solar and tariff rows, battery limits, and 1&ndash;3 operator notes.</p>
+      <span class="who">POST /optimize-energy</span>
+    </div>
+    <div class="arrow">&rarr;</div>
+
+    <div class="box b-api">
+      <div class="n">02</div>
+      <h3>Schema validation</h3>
+      <p>Strict types, finite numbers, all 24 hours present once. Bad input is rejected as 400 with nothing echoed back.</p>
+      <span class="who">Pydantic</span>
+    </div>
+    <div class="arrow">&rarr;</div>
+
+    <div class="box b-llm">
+      <div class="n">03</div>
+      <h3>LLM interpretation</h3>
+      <p>The only component that reads human language. Notes go in as delimited <i>data</i>, never as instructions. Returns one structured directive per note.</p>
+      <span class="who">DeepSeek</span>
+    </div>
+    <div class="arrow">&rarr;</div>
+
+    <div class="box b-guard">
+      <div class="n">04</div>
+      <h3>Deterministic guardrails</h3>
+      <p>Model output is untrusted. Checks type, shape, one entry per note, sorted hours 0&ndash;23, factor in [0,1], reserve &le; capacity. Never pads a gap with no_op.</p>
+      <span class="who">own code</span>
+    </div>
+    <div class="arrow">&rarr;</div>
+
+    <div class="box b-opt">
+      <div class="n">05</div>
+      <h3>Linear program</h3>
+      <p>Directives become hard constraints. 96 continuous variables over 24 hours, solved for minimum grid cost.</p>
+      <span class="who">SciPy HiGHS</span>
+    </div>
+    <div class="arrow">&rarr;</div>
+
+    <div class="box b-check">
+      <div class="n">06</div>
+      <h3>Independent replay</h3>
+      <p>The finished plan is serialized, decoded and re-checked by separate code &mdash; balance, battery state, every directive, all totals &mdash; before it is returned.</p>
+      <span class="who">own code</span>
+    </div>
+  </div>
+
+  <div class="band">
+    <h4>The optimization, stated exactly</h4>
+    <div class="eq">
+      minimize <b>&Sigma; tariff[h] &times; grid[h]</b> &nbsp;&nbsp; subject to &nbsp;
+      grid[h] + solar[h] &minus; battery[h] = demand[h] &nbsp;·&nbsp;
+      E[h] = E[h&minus;1] + battery[h] &nbsp;·&nbsp;
+      <b>E[23] = E<sub>initial</sub></b> &nbsp;·&nbsp;
+      reserve &le; E[h] &le; capacity &nbsp;·&nbsp;
+      &minus;max_discharge &le; battery[h] &le; max_charge
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <h4>Key choices</h4>
+      <ul>
+        <li><b>Signed battery flow</b> <span>&mdash; one action per hour without binary variables, so it stays a pure LP</span></li>
+        <li><b>Lossless model</b> <span>&mdash; no invented efficiency, degradation or peak penalty</span></li>
+        <li><b>Cost is the only objective</b> <span>&mdash; peak is reported, not optimized</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>Safe failure</h4>
+      <ul>
+        <li>Provider failure never becomes a fabricated schedule</li>
+        <li>A directive is never relaxed to force a success</li>
+        <li>Errors are static &mdash; no input, stack trace or key</li>
+        <li>Unspecified rules fail loudly instead of guessing</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>Run &amp; test</h4>
+      <ul>
+        <li><b>257 tests</b> <span>&mdash; no credentials, no credit spent</span></li>
+        <li><b>check_samples</b> <span>&mdash; replays the 10 reference plans</span></li>
+        <li><b>solve_samples</b> <span>&mdash; LP vs published costs</span></li>
+        <li><b>Docker</b> <span>&mdash; one pullable image, key at run time</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="facts">
+    <div class="fact"><div class="v g">10 / 10</div><div class="k">official sample costs reproduced exactly</div></div>
+    <div class="fact"><div class="v g">38 / 38</div><div class="k">notes interpreted correctly</div></div>
+    <div class="fact"><div class="v">1.38 s</div><div class="k">p95 latency, live endpoint</div></div>
+    <div class="fact"><div class="v">257</div><div class="k">tests passing</div></div>
+    <div class="fact"><div class="v">0.15 s</div><div class="k">to /health ready</div></div>
+  </div>
+</div>
+</body>
+</html>
